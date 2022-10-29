@@ -71,28 +71,19 @@ custom_context_type custom_context;
 void init_local_predictor()
 {
     // Initialize history tables
-    uint16_t table_size = 1;
-    for (int i = 0; i < pcIndexBits; i++) {
-        table_size <<= 1;
-    }
+    uint16_t table_size = 1 << pcIndexBits;
     local_context.table_size = table_size;
     local_context.local_history_tables = (uint16_t*)malloc(sizeof(uint16_t) * table_size);
 
     // Initialize counter
-    uint16_t counter_size = 1;
-    for (int i = 0; i < lhistoryBits; i++) {
-        counter_size <<= 1;
-    }
+    uint16_t counter_size = 1 << lhistoryBits;
     local_context.counter_size = counter_size;
     local_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
 }
 
 void init_gshare_predictor()
 {
-    uint16_t counter_size = 1;
-    for (int i = 0; i < ghistoryBits; i++) {
-        counter_size <<= 1;
-    }
+    uint16_t counter_size = 1 << ghistoryBits;
     gshare_context.global_history_table = 0;
     gshare_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
     gshare_context.counter_size = counter_size;
@@ -105,10 +96,7 @@ void init_tournament_predictor()
     init_gshare_predictor();
 
     // Init the predictor chooser
-    uint16_t choice_size = 1;
-    for (int i = 0; i < ghistoryBits; i++) {
-        choice_size <<= 1;
-    }
+    uint16_t choice_size = 1 << ghistoryBits;
     tournament_context.choice_size = choice_size;
     tournament_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
 }
