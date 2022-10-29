@@ -37,17 +37,27 @@ int verbose;
 //
 
 typedef struct {
+    uint16_t* local_history_tables;
+    uint16_t table_size;
+    uint8_t* counters;
+    uint16_t counter_size;
+} local_context_type;
+
+typedef struct {
     uint16_t global_history_table;
     uint8_t* counters;
     uint16_t counter_size;
 } gshare_context_type;
 
 typedef struct {
+    uint8_t* choices;
+    uint16_t choice_size;
 } tournament_context_type;
 
 typedef struct {
 } custom_context_type;
 
+local_context_type local_context;
 gshare_context_type gshare_context;
 tournament_context_type tournament_context;
 custom_context_type custom_context;
@@ -58,6 +68,25 @@ custom_context_type custom_context;
 
 // Initialize the predictor
 //
+void init_local_predictor()
+{
+    // Initialize history tables
+    uint16_t table_size = 1;
+    for (int i = 0; i < pcIndexBits; i++) {
+        table_size <<= 1;
+    }
+    local_context.table_size = table_size;
+    local_context.local_history_tables = (uint16_t*)malloc(sizeof(uint16_t) * table_size);
+
+    // Initialize counter
+    uint16_t counter_size = 1;
+    for (int i = 0; i < lhistoryBits; i++) {
+        counter_size <<= 1;
+    }
+    local_context.counter_size = counter_size;
+    local_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
+}
+
 void init_gshare_predictor()
 {
     uint16_t counter_size = 1;
@@ -69,7 +98,20 @@ void init_gshare_predictor()
     gshare_context.counter_size = counter_size;
 }
 
-void init_tournament_predictor() { }
+void init_tournament_predictor()
+{
+    // Init required predictors
+    init_local_predictor();
+    init_gshare_predictor();
+
+    // Init the predictor chooser
+    uint16_t choice_size = 1;
+    for (int i = 0; i < ghistoryBits; i++) {
+        choice_size <<= 1;
+    }
+    tournament_context.choice_size = choice_size;
+    tournament_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
+}
 
 void init_custom_predictor() { }
 
@@ -95,6 +137,23 @@ void init_predictor()
 // Returning TAKEN indicates a prediction of taken; returning NOTTAKEN
 // indicates a prediction of not taken
 //
+uint8_t make_local_prediction(uint32_t pc)
+{
+    // Retrive history
+    uint16_t pc_bit_mask = local_context.table_size - 1;
+    uint16_t pc_index = pc & pc_bit_mask;
+    uint16_t history = local_context.local_history_tables[pc_index];
+
+    // Retrive state
+    uint8_t state = local_context.counters[history];
+
+    // Make prediction
+    if (state == SN || state == WN) {
+        return NOTTAKEN;
+    }
+    return TAKEN;
+}
+
 uint8_t make_gshare_prediction(uint32_t pc)
 {
     uint16_t bit_mask = gshare_context.counter_size - 1;
@@ -108,9 +167,20 @@ uint8_t make_gshare_prediction(uint32_t pc)
     return TAKEN;
 }
 
-uint8_t make_tournament_prediction(uint32_t pc) { }
+uint8_t make_tournament_prediction(uint32_t pc)
+{
+    uint16_t bit_mask = tournament_context.choice_size - 1;
+    uint16_t pc_index = pc & bit_mask;
+    uint8_t choice = tournament_context.choices[pc_index];
+    if (choice <= 1) {
+        return make_local_prediction(pc);
+    }
+    return make_gshare_prediction(pc);
+}
 
-uint8_t make_custom_prediction(uint32_t pc) { }
+uint8_t make_custom_prediction(uint32_t pc)
+{
+}
 
 uint8_t make_prediction(uint32_t pc)
 {
@@ -140,11 +210,30 @@ uint8_t make_prediction(uint32_t pc)
 // outcome 'outcome' (true indicates that the branch was taken, false
 // indicates that the branch was not taken)
 //
-void train_predictor(uint32_t pc, uint8_t outcome)
+void train_local_predictor(uint32_t pc, uint8_t outcome)
 {
-    //
-    // TODO: Implement Predictor training
-    // uint16_t bit_mask = gshare_context.counter_size - 1;
+    // Retrive history
+    uint16_t pc_bit_mask = local_context.table_size - 1;
+    uint16_t pc_index = pc & pc_bit_mask;
+    uint16_t history = local_context.local_history_tables[pc_index];
+
+    // Update state
+    uint8_t state = local_context.counters[history];
+    if (outcome == TAKEN && state != ST) {
+        state++;
+    } else if (outcome == NOTTAKEN && state != SN) {
+        state--;
+    }
+    local_context.counters[history] = state;
+
+    // Update history
+    uint16_t history_bit_mask = local_context.counter_size - 1;
+    history = ((history << 1) + outcome) & history_bit_mask;
+    local_context.local_history_tables[pc_index] = history;
+}
+
+void train_gshare_predictor(uint32_t pc, uint8_t outcome)
+{
     uint16_t bit_mask = gshare_context.counter_size - 1;
     uint16_t pc_index = pc & bit_mask;
     uint16_t ghr = gshare_context.global_history_table;
@@ -163,4 +252,50 @@ void train_predictor(uint32_t pc, uint8_t outcome)
     // Update global history register
     ghr = ((ghr << 1) + outcome) & bit_mask;
     gshare_context.global_history_table = ghr;
+}
+
+void train_tournament_predictor(uint32_t pc, uint8_t outcome)
+{
+    // Retrive the predictor choice
+    uint16_t bit_mask = tournament_context.choice_size - 1;
+    uint16_t pc_index = pc & bit_mask;
+    uint8_t choice = tournament_context.choices[pc_index];
+
+    // Train used predictor
+    train_local_predictor(pc, outcome);
+    train_gshare_predictor(pc, outcome);
+
+    // Train choice predictor
+    uint8_t local_pred = make_local_prediction(pc);
+    uint8_t gshare_pred = make_gshare_prediction(pc);
+
+    if (local_pred == outcome && gshare_pred != outcome && choice > 0) {
+        choice--;
+    } else if (local_pred != outcome && gshare_pred == outcome && choice < 3) {
+        choice++;
+    }
+
+    tournament_context.choices[pc_index] = choice;
+}
+
+void train_custom_predictor(uint32_t pc, uint8_t outcome)
+{
+}
+
+void train_predictor(uint32_t pc, uint8_t outcome)
+{
+    //
+    // TODO: Implement Predictor training
+    // uint16_t bit_mask = gshare_context.counter_size - 1;
+    switch (bpType) {
+    case GSHARE:
+        train_gshare_predictor(pc, outcome);
+        return;
+    case TOURNAMENT:
+        train_tournament_predictor(pc, outcome);
+        return;
+    case CUSTOM:
+        train_custom_predictor(pc, outcome);
+        return;
+    }
 }
