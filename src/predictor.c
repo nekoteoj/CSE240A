@@ -249,10 +249,6 @@ void train_tournament_predictor(uint32_t pc, uint8_t outcome)
     uint16_t pc_index = pc & bit_mask;
     uint8_t choice = tournament_context.choices[pc_index];
 
-    // Train used predictor
-    train_local_predictor(pc, outcome);
-    train_gshare_predictor(pc, outcome);
-
     // Train choice predictor
     uint8_t local_pred = make_local_prediction(pc);
     uint8_t gshare_pred = make_gshare_prediction(pc);
@@ -264,6 +260,10 @@ void train_tournament_predictor(uint32_t pc, uint8_t outcome)
     }
 
     tournament_context.choices[pc_index] = choice;
+
+    // Train used predictors
+    train_local_predictor(pc, outcome);
+    train_gshare_predictor(pc, outcome);
 }
 
 void train_custom_predictor(uint32_t pc, uint8_t outcome)
