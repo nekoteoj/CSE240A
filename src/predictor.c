@@ -7,6 +7,7 @@
 //========================================================//
 #include "predictor.h"
 #include <stdio.h>
+#include <string.h>
 
 //
 // TODO:Student Information
@@ -74,11 +75,13 @@ void init_local_predictor()
     uint16_t table_size = 1 << pcIndexBits;
     local_context.table_size = table_size;
     local_context.local_history_tables = (uint16_t*)malloc(sizeof(uint16_t) * table_size);
+    memset(local_context.local_history_tables, 0, sizeof(uint16_t) * table_size);
 
     // Initialize counter
     uint16_t counter_size = 1 << lhistoryBits;
     local_context.counter_size = counter_size;
     local_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
+    memset(local_context.counters, 0, sizeof(uint8_t) * counter_size);
 }
 
 void init_gshare_predictor()
@@ -87,6 +90,7 @@ void init_gshare_predictor()
     gshare_context.global_history_table = 0;
     gshare_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
     gshare_context.counter_size = counter_size;
+    memset(gshare_context.counters, 0, sizeof(uint8_t) * counter_size);
 }
 
 void init_tournament_predictor()
@@ -99,6 +103,7 @@ void init_tournament_predictor()
     uint16_t choice_size = 1 << ghistoryBits;
     tournament_context.choice_size = choice_size;
     tournament_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
+    memset(tournament_context.choices, 0, sizeof(uint8_t) * choice_size);
 }
 
 void init_custom_predictor() { }
