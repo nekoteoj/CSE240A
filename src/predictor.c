@@ -81,7 +81,9 @@ void init_local_predictor()
     uint16_t counter_size = 1 << lhistoryBits;
     local_context.counter_size = counter_size;
     local_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
-    memset(local_context.counters, 0, sizeof(uint8_t) * counter_size);
+    for (int i = 0; i < counter_size; i++) {
+        local_context.counters[i] = WN;
+    }
 }
 
 void init_gshare_predictor()
@@ -90,7 +92,9 @@ void init_gshare_predictor()
     gshare_context.global_history_table = 0;
     gshare_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
     gshare_context.counter_size = counter_size;
-    memset(gshare_context.counters, 0, sizeof(uint8_t) * counter_size);
+    for (int i = 0; i < counter_size; i++) {
+        gshare_context.counters[i] = WN;
+    }
 }
 
 void init_tournament_predictor()
@@ -103,7 +107,9 @@ void init_tournament_predictor()
     uint16_t choice_size = 1 << ghistoryBits;
     tournament_context.choice_size = choice_size;
     tournament_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
-    memset(tournament_context.choices, 0, sizeof(uint8_t) * choice_size);
+    for (int i = 0; i < choice_size; i++) {
+        tournament_context.choices[i] = 2;
+    }
 }
 
 void init_custom_predictor() { }
