@@ -6,6 +6,7 @@
 //  described in the README                               //
 //========================================================//
 #include "predictor.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -48,6 +49,7 @@ typedef struct {
     uint16_t global_history_table;
     uint8_t* counters;
     uint16_t counter_size;
+    bool xorIndex;
 } gshare_context_type;
 
 typedef struct {
@@ -86,12 +88,13 @@ void init_local_predictor()
     }
 }
 
-void init_gshare_predictor()
+void init_gshare_predictor(bool xorIndex)
 {
     uint16_t counter_size = 1 << ghistoryBits;
     gshare_context.global_history_table = 0;
     gshare_context.counters = (uint8_t*)malloc(sizeof(uint8_t) * counter_size);
     gshare_context.counter_size = counter_size;
+    gshare_context.xorIndex = xorIndex;
     for (int i = 0; i < counter_size; i++) {
         gshare_context.counters[i] = WN;
     }
@@ -101,7 +104,7 @@ void init_tournament_predictor()
 {
     // Init required predictors
     init_local_predictor();
-    init_gshare_predictor();
+    init_gshare_predictor(false);
 
     // Init the predictor chooser
     uint16_t choice_size = 1 << ghistoryBits;
@@ -121,7 +124,7 @@ void init_predictor()
     //
     switch (bpType) {
     case GSHARE:
-        init_gshare_predictor();
+        init_gshare_predictor(true);
         return;
     case TOURNAMENT:
         init_tournament_predictor();
@@ -156,9 +159,12 @@ uint8_t make_local_prediction(uint32_t pc)
 uint8_t make_gshare_prediction(uint32_t pc)
 {
     uint16_t bit_mask = gshare_context.counter_size - 1;
-    uint16_t pc_index = pc & bit_mask;
     uint16_t ghr_index = gshare_context.global_history_table & bit_mask;
-    uint16_t index = ghr_index ^ pc_index;
+    uint16_t index = ghr_index;
+    if (gshare_context.xorIndex) {
+        uint16_t pc_index = pc & bit_mask;
+        index ^= pc_index;
+    }
     uint8_t state = gshare_context.counters[index];
     if (state == SN || state == WN) {
         return NOTTAKEN;
@@ -169,8 +175,8 @@ uint8_t make_gshare_prediction(uint32_t pc)
 uint8_t make_tournament_prediction(uint32_t pc)
 {
     uint16_t bit_mask = tournament_context.choice_size - 1;
-    uint16_t pc_index = pc & bit_mask;
-    uint8_t choice = tournament_context.choices[pc_index];
+    uint16_t ghr_index = gshare_context.global_history_table & bit_mask;
+    uint8_t choice = tournament_context.choices[ghr_index];
     if (choice <= 1) {
         return make_local_prediction(pc);
     }
@@ -234,10 +240,13 @@ void train_local_predictor(uint32_t pc, uint8_t outcome)
 void train_gshare_predictor(uint32_t pc, uint8_t outcome)
 {
     uint16_t bit_mask = gshare_context.counter_size - 1;
-    uint16_t pc_index = pc & bit_mask;
     uint16_t ghr = gshare_context.global_history_table;
     uint16_t ghr_index = ghr & bit_mask;
-    uint16_t index = ghr_index ^ pc_index;
+    uint16_t index = ghr_index;
+    if (gshare_context.xorIndex) {
+        uint16_t pc_index = pc & bit_mask;
+        index ^= pc_index;
+    }
     uint8_t state = gshare_context.counters[index];
 
     // Update state in the counter
@@ -257,8 +266,8 @@ void train_tournament_predictor(uint32_t pc, uint8_t outcome)
 {
     // Retrive the predictor choice
     uint16_t bit_mask = tournament_context.choice_size - 1;
-    uint16_t pc_index = pc & bit_mask;
-    uint8_t choice = tournament_context.choices[pc_index];
+    uint16_t ghr_index = gshare_context.global_history_table & bit_mask;
+    uint8_t choice = tournament_context.choices[ghr_index];
 
     // Train choice predictor
     uint8_t local_pred = make_local_prediction(pc);
@@ -270,7 +279,7 @@ void train_tournament_predictor(uint32_t pc, uint8_t outcome)
         choice++;
     }
 
-    tournament_context.choices[pc_index] = choice;
+    tournament_context.choices[ghr_index] = choice;
 
     // Train used predictors
     train_local_predictor(pc, outcome);
