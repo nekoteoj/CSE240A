@@ -115,13 +115,16 @@ void init_gshare_predictor(bool xorIndex)
     for (int i = 0; i < counter_size; i++) {
         gshare_context.counters[i] = WN;
     }
+
+    uint32_t predictor_size = (counter_size * 2);
+    printf("global predictor size: %d\n", predictor_size);
 }
 
-void init_tournament_predictor()
+void init_tournament_predictor(bool xorIndex)
 {
     // Init required predictors
     init_local_predictor();
-    init_gshare_predictor(false);
+    init_gshare_predictor(xorIndex);
 
     // Init the predictor chooser
     uint16_t choice_size = 1 << ghistoryBits;
@@ -130,6 +133,9 @@ void init_tournament_predictor()
     for (int i = 0; i < choice_size; i++) {
         tournament_context.choices[i] = 2;
     }
+
+    uint32_t predictor_size = (choice_size * 2);
+    printf("tournament predictor size: %d\n", predictor_size);
 }
 
 void init_perceptron_predictor()
@@ -163,16 +169,16 @@ void init_perceptron_predictor()
     // printf("weight max: %d\n", perceptron_context.weight_max);
     // printf("weight min: %d\n", perceptron_context.weight_min);
     // printf("theta: %f\n", perceptron_context.theta);
-    printf("\nperceptron predictor size: %d bits\n", predictor_size);
-    printf("max storage: %d bits\n", 64 * 1024 + 256);
+    printf("perceptron predictor size: %d\n", predictor_size);
     // printf("================================================================================\n");
 }
 
 void init_custom_predictor()
 {
+    ghistoryBits = 11;
     lhistoryBits = 10;
-    pcIndexBits = 9;
-    init_local_predictor();
+    pcIndexBits = 10;
+    init_tournament_predictor(true);
 
     pcIndexBits = 9;
     ghistoryBits = 10;
@@ -183,8 +189,12 @@ void init_custom_predictor()
     custom_context.choice_size = choice_size;
     custom_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
     for (int i = 0; i < choice_size; i++) {
-        custom_context.choices[i] = 3;
+        custom_context.choices[i] = 0;
     }
+
+    uint32_t predictor_size = (choice_size * 2);
+    printf("custom predictor size: %d\n", predictor_size);
+    printf("max storage: %d bits\n", 64 * 1024 + 256);
 }
 
 void init_predictor()
@@ -197,7 +207,7 @@ void init_predictor()
         init_gshare_predictor(true);
         return;
     case TOURNAMENT:
-        init_tournament_predictor();
+        init_tournament_predictor(false);
         return;
     case CUSTOM:
         init_custom_predictor();
@@ -286,7 +296,7 @@ uint8_t make_custom_prediction(uint32_t pc)
     uint16_t pc_index = pc & bit_mask;
     uint8_t choice = custom_context.choices[pc_index];
     if (choice <= 1) {
-        return make_local_prediction(pc);
+        return make_tournament_prediction(pc);
     }
     return make_perceptron_prediction(pc);
 }
@@ -439,7 +449,7 @@ void train_custom_predictor(uint32_t pc, uint8_t outcome)
     uint8_t choice = custom_context.choices[pc_index];
 
     // Train choice predictor
-    uint8_t local_pred = make_local_prediction(pc);
+    uint8_t local_pred = make_tournament_prediction(pc);
     uint8_t perceptron_pred = make_perceptron_prediction(pc);
 
     if (local_pred == outcome && perceptron_pred != outcome && choice > 0) {
@@ -451,7 +461,7 @@ void train_custom_predictor(uint32_t pc, uint8_t outcome)
     custom_context.choices[pc_index] = choice;
 
     // Train used predictors
-    train_local_predictor(pc, outcome);
+    train_tournament_predictor(pc, outcome);
     train_perceptron_predictor(pc, outcome);
 }
 
