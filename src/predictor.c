@@ -69,6 +69,8 @@ typedef struct {
 } perceptron_context_type;
 
 typedef struct {
+    uint8_t* choices;
+    uint16_t choice_size;
 } custom_context_type;
 
 local_context_type local_context;
@@ -98,6 +100,9 @@ void init_local_predictor()
     for (int i = 0; i < counter_size; i++) {
         local_context.counters[i] = WN;
     }
+
+    uint32_t predictor_size = (table_size * lhistoryBits) + (counter_size * 2);
+    printf("local predictor size: %d\n", predictor_size);
 }
 
 void init_gshare_predictor(bool xorIndex)
@@ -129,10 +134,6 @@ void init_tournament_predictor()
 
 void init_perceptron_predictor()
 {
-    // Define global parameters
-    pcIndexBits = 10;
-    ghistoryBits = 10;
-
     // Define local parameters
     uint32_t perceptron_table_size = 1 << pcIndexBits;
     uint32_t perceptron_size = ghistoryBits;
@@ -155,21 +156,35 @@ void init_perceptron_predictor()
         memset(perceptron_context.perceptrons[i], 0, sizeof(int32_t) * (perceptron_size + 1));
     }
 
-    printf("================================================================================\n");
-    printf("Using perceptron predictor:\n");
-    printf("table size: %d\n", perceptron_table_size);
-    printf("perceptron size: %d\n", perceptron_size);
-    printf("weight max: %d\n", perceptron_context.weight_max);
-    printf("weight min: %d\n", perceptron_context.weight_min);
-    printf("theta: %f\n", perceptron_context.theta);
+    // printf("================================================================================\n");
+    // printf("Using perceptron predictor:\n");
+    // printf("table size: %d\n", perceptron_table_size);
+    // printf("perceptron size: %d\n", perceptron_size);
+    // printf("weight max: %d\n", perceptron_context.weight_max);
+    // printf("weight min: %d\n", perceptron_context.weight_min);
+    // printf("theta: %f\n", perceptron_context.theta);
     printf("\nperceptron predictor size: %d bits\n", predictor_size);
     printf("max storage: %d bits\n", 64 * 1024 + 256);
-    printf("================================================================================\n");
+    // printf("================================================================================\n");
 }
 
 void init_custom_predictor()
 {
+    lhistoryBits = 10;
+    pcIndexBits = 9;
+    init_local_predictor();
+
+    pcIndexBits = 9;
+    ghistoryBits = 10;
     init_perceptron_predictor();
+
+    // Init the predictor chooser
+    uint16_t choice_size = 1 << pcIndexBits;
+    custom_context.choice_size = choice_size;
+    custom_context.choices = (uint8_t*)malloc(sizeof(uint8_t) * choice_size);
+    for (int i = 0; i < choice_size; i++) {
+        custom_context.choices[i] = 3;
+    }
 }
 
 void init_predictor()
@@ -241,7 +256,7 @@ uint8_t make_tournament_prediction(uint32_t pc)
 int32_t make_perceptron_prediction_proba(uint32_t pc)
 {
     uint32_t table_bit_mask = perceptron_context.perceptron_table_size - 1;
-    uint32_t table_index = pc & table_bit_mask;
+    uint32_t table_index = (pc)&table_bit_mask;
     int32_t* weights = perceptron_context.perceptrons[table_index];
 
     uint32_t history = perceptron_context.global_history_table;
@@ -266,6 +281,13 @@ uint8_t make_perceptron_prediction(uint32_t pc)
 
 uint8_t make_custom_prediction(uint32_t pc)
 {
+    // return make_perceptron_prediction(pc);
+    uint16_t bit_mask = custom_context.choice_size - 1;
+    uint16_t pc_index = pc & bit_mask;
+    uint8_t choice = custom_context.choices[pc_index];
+    if (choice <= 1) {
+        return make_local_prediction(pc);
+    }
     return make_perceptron_prediction(pc);
 }
 
@@ -371,7 +393,7 @@ void train_tournament_predictor(uint32_t pc, uint8_t outcome)
 void train_perceptron_predictor(uint32_t pc, uint8_t outcome)
 {
     uint32_t table_bit_mask = perceptron_context.perceptron_table_size - 1;
-    uint32_t table_index = pc & table_bit_mask;
+    uint32_t table_index = (pc)&table_bit_mask;
     int32_t* weights = perceptron_context.perceptrons[table_index];
 
     uint8_t pred = make_perceptron_prediction(pc);
@@ -410,6 +432,26 @@ void train_perceptron_predictor(uint32_t pc, uint8_t outcome)
 
 void train_custom_predictor(uint32_t pc, uint8_t outcome)
 {
+    // train_perceptron_predictor(pc, outcome);
+    // Retrive the predictor choice
+    uint16_t bit_mask = custom_context.choice_size - 1;
+    uint16_t pc_index = pc & bit_mask;
+    uint8_t choice = custom_context.choices[pc_index];
+
+    // Train choice predictor
+    uint8_t local_pred = make_local_prediction(pc);
+    uint8_t perceptron_pred = make_perceptron_prediction(pc);
+
+    if (local_pred == outcome && perceptron_pred != outcome && choice > 0) {
+        choice--;
+    } else if (local_pred != outcome && perceptron_pred == outcome && choice < 3) {
+        choice++;
+    }
+
+    custom_context.choices[pc_index] = choice;
+
+    // Train used predictors
+    train_local_predictor(pc, outcome);
     train_perceptron_predictor(pc, outcome);
 }
 
