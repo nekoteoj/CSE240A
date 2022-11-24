@@ -218,12 +218,12 @@ void init_perceptron_local_predictor()
 
 void init_custom_predictor()
 {
-    lhistoryBits = 10;
-    pcIndexBits = 10;
+    lhistoryBits = 11;
+    pcIndexBits = 11;
     init_local_predictor();
 
-    ghistoryBits = 6;
-    init_perceptron_predictor();
+    ghistoryBits = 14;
+    init_gshare_predictor(true);
 
     // Init the predictor chooser
     uint16_t choice_size = 1 << pcIndexBits;
@@ -373,7 +373,7 @@ uint8_t make_custom_prediction(uint32_t pc)
     if (choice <= 1) {
         return make_local_prediction(pc);
     }
-    return make_perceptron_prediction(pc);
+    return make_gshare_prediction(pc);
 }
 
 uint8_t make_prediction(uint32_t pc)
@@ -565,7 +565,7 @@ void train_custom_predictor(uint32_t pc, uint8_t outcome)
 
     // Train choice predictor
     uint8_t local_pred = make_local_prediction(pc);
-    uint8_t perceptron_pred = make_perceptron_prediction(pc);
+    uint8_t perceptron_pred = make_gshare_prediction(pc);
 
     if (local_pred == outcome && perceptron_pred != outcome && choice > 0) {
         choice--;
@@ -577,7 +577,7 @@ void train_custom_predictor(uint32_t pc, uint8_t outcome)
 
     // Train used predictors
     train_local_predictor(pc, outcome);
-    train_perceptron_predictor(pc, outcome);
+    train_gshare_predictor(pc, outcome);
 }
 
 void train_predictor(uint32_t pc, uint8_t outcome)
