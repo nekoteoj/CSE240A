@@ -15,15 +15,13 @@ Incorrect:            12765
 Misprediction Rate:   0.825
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           1546797
-Incorrect:            15199
-Misprediction Rate:   0.983
+Incorrect:            12492
+Misprediction Rate:   0.808
 
 Testing  fp_2
 Model:  --tournament:9:10:10
@@ -41,15 +39,13 @@ Incorrect:            40641
 Misprediction Rate:   1.678
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           2422049
-Incorrect:            47771
-Misprediction Rate:   1.972
+Incorrect:            28238
+Misprediction Rate:   1.166
 
 Testing  int_1
 Model:  --tournament:9:10:10
@@ -67,15 +63,13 @@ Incorrect:           521958
 Misprediction Rate:  13.839
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           3771697
-Incorrect:           395361
-Misprediction Rate:  10.482
+Incorrect:           414225
+Misprediction Rate:  10.982
 
 Testing  int_2
 Model:  --tournament:9:10:10
@@ -93,15 +87,13 @@ Incorrect:            15776
 Misprediction Rate:   0.420
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           3755315
-Incorrect:            12548
-Misprediction Rate:   0.334
+Incorrect:            11352
+Misprediction Rate:   0.302
 
 Testing  mm_1
 Model:  --tournament:9:10:10
@@ -119,15 +111,13 @@ Incorrect:           201871
 Misprediction Rate:   6.696
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           3014850
-Incorrect:            40807
-Misprediction Rate:   1.354
+Incorrect:           120425
+Misprediction Rate:   3.994
 
 Testing  mm_2
 Model:  --tournament:9:10:10
@@ -145,13 +135,11 @@ Incorrect:           259929
 Misprediction Rate:  10.138
 
 Model:  --custom
-local predictor size: 12288
-global predictor size: 4096
-tournament predictor size: 4096
-perceptron predictor size: 39434
-custom predictor size: 1024
+perceptron local predictor size: 26632
+global predictor size: 32768
+custom predictor size: 2048
 max storage: 65792 bits
 Branches:           2563897
-Incorrect:           177106
-Misprediction Rate:   6.908
+Incorrect:           185688
+Misprediction Rate:   7.242
 
