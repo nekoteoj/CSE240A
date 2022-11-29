@@ -73,6 +73,9 @@ formatting and submission should be directed to the program chair.
 
 \section{Design Ideas}
 
+Our design is based mostly on tournament branch predictor used in Alpha 21264's branch
+predictor.
+
 In the tournament branch predictor, it used both local and global branch prediction
 with a choice prediction to choose the right predictor for different branches.
 This help the predictor to handle both local and global correlation between branches.
@@ -83,9 +86,21 @@ First, we decided to look at the global predictor. If we compare between Alpha 2
 global predictor and GShare, we will notice that the index hashing schemes are different.
 For GShare, it used $index = (pc \oplus GHR) \mod{n}$ to index the global counter. While the latter
 predictor used only $pc \mod{n}$ as the index. We believe that GShare's index is better
-at incorporate both pc and GHR information to select the counter.
+at incorporate both pc and GHR information to select the counter. In addition, we have more
+storage for storing the data for branch predictor. Thus, we decided to increase the size of
+global predictor too.
+
+Secondly, for the local branch predictor, we observed that the implementaion in the
+Alpha 21264's predictor performed very well with 2-bit saturating counter. Thus, we decided
+to keep the counter as is. However, to efficiently use the increase storage size, we increased
+the size of the local history table instead.
+
+The predictor choose in the Alpha 21264's worked fine, so we used it to choose the predictor
+in the branch prediction process.
 
 \section{Implementation details}
+
+In this section, we 
 
 \section{Experimental Setup}
 
