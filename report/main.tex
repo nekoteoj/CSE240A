@@ -1,11 +1,13 @@
 \documentclass[conference]{IEEEtran}
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
+% \usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{fancyhdr}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage[hyphens]{url}
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -95,12 +97,143 @@ Alpha 21264's predictor performed very well with 2-bit saturating counter. Thus,
 to keep the counter as is. However, to efficiently use the increase storage size, we increased
 the size of the local history table instead.
 
-The predictor choose in the Alpha 21264's worked fine, so we used it to choose the predictor
-in the branch prediction process.
+The predictor chooser in the Alpha 21264's worked fine. However, we thought that the hashing
+index should be changed. Instead of indexing the chooser by the global history register,
+we changed the index to be the program counter instead. Thus, the chooser will select the
+predictor based on the current instruction address instead of the global
+history of the branch outcome.
 
 \section{Implementation details}
 
-In this section, we 
+In this section, we explained how our predictor was implemented. The proposed predictor is
+based on Alpha 21264's branch predictor which include the local predictor, the global predictor
+and the chooser as its components.
+
+\subsection{Overall Design}
+
+The overview design of our predictor is shown in Figure \ref{fig:overall_design}. We have two different
+predictors inside the our predictor targeting global correlation and local correlation predictions.
+One thing to notice is that global predictor is using the xor result between the global history register
+and the program counter as the index. However, for the the rest of the components, we used only program
+counter for indexing.
+
+During the prediction process, both predictors will give a prediction output, but only one prediction
+will be chosen by the predictor chooser. We incorporate a mux here as a selector. The output from the mux
+is the prediction result from our predictor.
+
+After each prediction was done and the real branch outcome was revealed, the predictor need to be updated.
+Both local and global predictor are both updated at the same time with new information which we will describe
+the update process later in this report. The predictor chooser is also updated in this state. After all
+components are updated, we update the global history register to include the new outcome to our history.
+This is done by left shifting the global history register, then the new outcome is added to its last bit.
+
+
+\begin{figure}[h]
+    \centering
+    % \vspace{0.2cm}
+    \includegraphics[width=0.45\textwidth]{imgs/overall_design}
+    \caption{The overall design of the proposed branch predictor. We have 2 predictors including
+    the local and the global predictor for capturing different local/global branch patterns. The
+    global predictor is indexed by the xored result between the global history register and the program
+    counter. The local predictor is indexed by the program counter only. The predictor chooser select
+    the result from both predictor by looking at the current address in the program counter.}
+    \label{fig:overall_design}
+\end{figure}
+
+\subsection{Local branch predictor}
+
+The presented local branch predictor in our work is based from the implementation in the tournament
+predictor. The n least significant bit from program counter is used to index the local history table.
+After that, we get the local history from that table. This history is a bit vector of Taken (T/1) and Not-Taken
+(N/0), which is used to index the local prediction table. The local prediction table will give the
+prediction result based on the state in the table. In this work, we used 2-bit predictors as our
+prediction table. This includes 4 possible states including strongly not-taken (SN/00),
+weakly not-taken (WN,01), weakly taken (WT/10) and strongly taken (ST/11). The first two states
+will give not-taken as the prediction result, while the last two will give taken as the prediction
+result. The internal process of this predictor is also shown in Figure \ref{fig:local_predictor}.
+
+\begin{figure}[h]
+    \centering
+    % \vspace{0.2cm}
+    \includegraphics[width=0.48\textwidth]{imgs/local_predictor}
+    \caption{The local predictor has two components. First component is the local history table with
+    hold the mapping table from address index to local branch history. Then, the obtained branch history
+    is used to get the prediction table state which determines the prediction result.}
+    \label{fig:local_predictor}
+\end{figure}
+
+During the update phase, the history related to the instruction address is updated with the new outcome.
+The prediction table state also get updated regarding the new branch outcome. We update the state toward
+strongly not-taken and toward strongly taken when the outcome is not-taken and taken respectively. The
+update algorithm is shown in Algorithm \ref{alg:local_predictor_update}.
+
+\begin{algorithm}
+\caption{An algorithm with caption}\label{alg:local_predictor_update}
+\begin{algorithmic}
+\Require $n \geq 0$
+\Ensure $y = x^n$
+\State $y \gets 1$
+\State $X \gets x$
+\State $N \gets n$
+\While{$N \neq 0$}
+\If{$N$ is even}
+    \State $X \gets X \times X$
+    \State $N \gets \frac{N}{2}$  \Comment{This is a comment}
+\ElsIf{$N$ is odd}
+    \State $y \gets y \times X$
+    \State $N \gets N - 1$
+\EndIf
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsection{Global branch predictor}
+
+For the global branch predictor, we modified Alpha 21264's global predictor to use the GShare index
+instead of just the global history register. The GShare index is calculated by xoring the global history
+table with the address in the program counter. This help incorporate both information to select the right
+prediction state for the global prediction, i.e., the same address with a different history will point to a
+different row in the prediction table. Same as the local branch predictor, the global prediction table stores
+2-bit states which related to strongly not-taken, weakly not-taken, weakly taken and strongly taken as described
+in the previous section. The internal implementation of this component is shown in Figure \ref{fig:global_predictor}.
+
+\begin{figure}[h]
+    \centering
+    % \vspace{0.2cm}
+    \includegraphics[width=0.3\textwidth]{imgs/global_predictor}
+    \caption{The global prediction table is indexed using the xoring result between the program counter and
+    the global history register. The prediction result is a 2-bit states which is the same as the prediction
+    table used in our local predictor.}
+    \label{fig:global_predictor}
+\end{figure}
+
+In order to update the global predictor,
+
+\subsection{Predictor chooser}
+
+The predictor chooser is implemented in almost same way as the global branch predictor. The difference is that the chooser
+use the instruction address from the program counter as the index, and the 2-bit states determine the
+predictor instead. The state 00, 01, 10 and 11 are for strongly local predictor, weakly local predictor,
+weakly global predictor and strongly global predictor respectively. The implementation of the predictor chooser
+is illustrated in Figure \ref{fig:global_predictor}.
+
+\begin{figure}[h]
+    \centering
+    % \vspace{0.2cm}
+    \includegraphics[width=0.3\textwidth]{imgs/predictor_chooser}
+    \caption{The global prediction table is indexed using the xoring result between the program counter and
+    the global history register. The prediction result is a 2-bit states which is the same as the prediction
+    table used in our local predictor.}
+    \label{fig:predictor_chooser}
+\end{figure}
+
+The chooser's state will be updated if the output from both predictors are different.
+
+\subsection{Predictor Initialization}
+
+\subsection{Storage analysis}
 
 \section{Experimental Setup}
 
