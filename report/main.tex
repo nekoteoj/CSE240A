@@ -223,128 +223,192 @@ is illustrated in Figure \ref{fig:global_predictor}.
     \centering
     % \vspace{0.2cm}
     \includegraphics[width=0.3\textwidth]{imgs/predictor_chooser}
-    \caption{The global prediction table is indexed using the xoring result between the program counter and
-    the global history register. The prediction result is a 2-bit states which is the same as the prediction
-    table used in our local predictor.}
+    \caption{The predictor chooser is indexed by the address in the program counter. The state in the table
+    determines which predictor to use. It acts as a selection bit for the output mux.}
     \label{fig:predictor_chooser}
 \end{figure}
 
-The chooser's state will be updated if the output from both predictors are different.
+The chooser's state will be updated if the output from both predictors are different. We will decrease the
+counter state if the local predictor give the correct prediction and the state is not 00. In the other case,
+the counter is increased if the state is not 11.
 
 \subsection{Predictor Initialization}
 
+For the local predictor, the local history table was initialize to all not-taken at every
+index. Moreover, we set the state for each row in the local prediction table to weakly not-taken
+state (01).
+
+In the case of the global predictor, the global history register was also initialized to all not-taken.
+The state in each row is also set to weakly not-taken (01) in the global prediction table.
+
+Lastly, we set the predictor chooser's state to 10 which weakly chooses the global predictor
+at start for every row in the counter table.
+
 \subsection{Storage analysis}
+
+In this project, we have $64K + 256$ bits to store required informtion in the proposed branch
+predictor. This is larger than our baseline which only allow $16K$ bits to store information.
+To utilize the larger storage, we increase the number of bits compared to our baseline.
+
+Our GShare baseline use 13 bits to store the global history. While our tournament predictor
+utilize 9, 10 and 10 bits to store the global history, the local history and the index for the
+local history table respectively. These are due to 16K bits budget limitation of the baseline.
+
+In our approach, we will sepearate half of storage for each predictor. Thus, we used 14 global
+history bits for the global predictor. The rest of the storage is used for local predictor with
+11 local history bits and 11 address bits. With this information, we can calculate the total
+storage used as following.
+
+With 11 bits for both local history and indexing bits, our local predictor used $2^{11} \times 11$
+bits for the local history table. Moreover, this means that $2^{11} \times 2$ bits are used for
+storing the prediciton table. Thus, total used bits are 26624 bits. 
+
+For the global predictor, we used 14 global history bits. Thus, the size of the prediction
+table is $2^14 \times 2 = 32768$ bits which equals to the total storage for this predictor.
+
+In addition to the predictor, we also have the chooser. We used the same index as the local predictor
+to select the chooser. Therefore, the size of the chooser is $2^11 \times 2 = 4096$ bits.
+
+From these information, the total size of the proposed predictor is
+$26624 + 14 + 32768 + 4096 = 63502$ bits which still fit to our budget.
 
 \section{Experimental Setup}
 
+In the project, we experiment the performance of our predictor compared to the given baselines.
+Although, baselines have 16K bits limitation. We extended the this limitation
+by exploring the GShare with 15 bits and the tournament predictor with
+11 global history bits, 12 local history bits and 12 program counter index bits.
+This help show how our predictor preform if our baselines have the same storage budget.
+
+In the testing phase, we have 3 different groups of traces including fp, int and mm.
+Each trace group have 2 differnt traces, so there are 6 traces in total. We will run
+each predictor with each trace and measure the misprediction rate. A predictor with a lower misprediction rate
+means that the performance of it is better.
+
 \section{Observation}
 
-\section{Results}
+After the experiment was performed and the misprediction rate was collected, we look
+further into the result we got.
 
-\section{Conclusion}
-
-\subsection{Format Highlights}
-
-Here are the format highlights in a nutshell:
-\begin{itemize}
-\item Paper must be submitted in printable PDF format.
-\item Text must be in a minimum 10pt Times font, see Table~\ref{table:formatting}.
-\item Papers must be at most 11 pages (not including references) in a
-  two-column format.
-\item No page limit for references.
-\item Each reference must specify {\em all} authors, i.e., no {\em et al.}
-\end{itemize}
-
-\subsection{Paper Evaluation Objectives} 
-The committee will make every effort to judge each submitted paper on
-its own merits. There will be no target acceptance rate. We expect to
-accept a wide range of papers with appropriate expectations for
-evaluation --- while papers that build on significant past work with
-strong evaluations are valuable, papers that open new areas with less
-rigorous evaluation are equally welcome and especially encouraged. We
-also acknowledge the wide range of evaluation methodologies in ISCA including
-modeling, simulation, prototyping, experimental implementation, real
-product evaluation, etc. 
-
-\section{Paper Preparation Instructions}
-
-\subsection{Paper Formatting}
-Papers must be submitted in printable PDF format and should contain a
-{\em maximum of 11 pages} of single-spaced two-column text, {\bf not
-  including references}.  You may include any number of pages for
-references, but see below for more instructions.  If you are using
-\LaTeX~\cite{lamport94} to typeset your paper, then we suggest that
-you use the template used to prepare this document, which you can find
-on the ISCA 2020 website. If you use a different
-software package to typeset your paper, then please adhere to the
-guidelines given in Table~\ref{table:formatting}.  
+First, we will look at the performance of our baselines. We will represent the
+GShare with $x$ global history bits as GShare:$x$, and the tournament predictor
+with $x$ global hisotyr bits, $y$ local history bits and $z$ address index bits
+as tournament:$x$:$y$:$z$. The performance of baselines is shown in Table \ref{table:baseline_performance}.
 
 \begin{scriptsize}
 \begin{table}[h!]
   \centering
-  \caption{Formatting guidelines for submission.}
-  \label{table:formatting}
-  \begin{tabular}{|l|l|}
+  \caption{Misprediction rate for our baseline predictors with each trace}
+  \label{table:baseline_performance}
+  \begin{tabular}{|l|l|l|l|l|l|l|}
     \hline
-    \textbf{Field} & \textbf{Value}\\
+    \textbf{Predictor} & \textbf{fp1} & \textbf{fp2} & \textbf{int1} &\textbf{int2} & \textbf{mm1} & \textbf{mm2}\\
     \hline
     \hline
-    File format & PDF \\
+    GShare:13 & 0.825 & 1.678 & 13.839 & 0.420 & 6.696 & 10.138 \\
+    (baseline) & & & & & & \\
     \hline
-    Page limit & 11 pages, {\bf not including}\\
-               & {\bf references}\\
+    GShare:15 & 0.827 & 0.985 & 11.220 & 0.364 & 4.441 & 8.039 \\
     \hline
-    Paper size & US Letter 8.5in $\times$ 11in\\
+    Tournament & & & & & & \\
+    :9:10:10 & 0.991 & 3.246 & 12.622 & 0.426 & 2.581 & 8.483 \\
+    (baseline) & & & & & & \\
     \hline
-    Top margin & 1in\\
-    \hline
-    Bottom margin & 1in\\
-    \hline
-    Left margin & 0.75in\\
-    \hline
-    Right margin & 0.75in\\
-    \hline
-    Body & 2-column, single-spaced\\
-    \hline
-    Space between columns & 0.25in\\
-    \hline
-    Line spacing (leading) & 11pt \\
-    \hline
-    Body font & 10pt, Times\\
-    \hline
-    Abstract font & 10pt, Times\\
-    \hline
-    Section heading font & 12pt, bold\\
-    \hline
-    Subsection heading font & 10pt, bold\\
-    \hline
-    Caption font & 9pt (minimum), bold\\
-    \hline
-    References & 8pt, no page limit, list \\
-               & all authors' names\\
+    Tournament & 0.990 & 0.410 & 10.171 & 0.333 & 1.072 & 6.967 \\
+    :11:12:12 & & & & & & \\
     \hline
   \end{tabular}
 \end{table}
 \end{scriptsize}
 
-{\em Please ensure that you include page numbers with your
-  submission}. This makes it easier for the reviewers to refer to
-different parts of your paper when they provide comments. Please
-ensure that your submission has a banner at the top of the title page,
-similar to this document, which contains the submission number and the
-notice of confidentiality.  If using the template, just replace `NaN'
-with your submission number. 
+Regarding the Table \ref{table:baseline_performance}, we can see that GShare baseline is better than
+the tournament baseline for fp trace group. In the other hand, the tournament
+baseline is better if we consider mm trace group. Both predictors performed
+great on int trace group. Moreover, although these predictors are extended
+to larger storage budget, none of these perform better than both original baselines
+at every traces. The tournament:11:12:12 might look promising, as it can beat 11 out of 12
+baseline traces. However, it didn't pass the requirement of the project. That's why we came up
+with our proposed method. Especially for trace fp1, we believe that using xor result
+between the program counter and the global history register for the global predictor
+is the key to beat this trace.
 
-\subsection{Content}
-Reviewing will be {\em double blind} (no author list); therefore,
-please do not include any author names on any submitted documents
-except in the space provided on the submission form.  You must also
-ensure that the metadata included in the PDF does not give away the
-authors. If you are improving upon your prior work, refer to your
-prior work in the third person and include a full citation for the
-work in the bibliography.  For example, if you are building on {\em
-  your own} prior work in the
-papers~\cite{nicepaper1,nicepaper2,nicepaper3}, you would say
+After we implemented our proposed method, we get the result as shown in the Table \ref{table:our_performance}.
+Misprediction rates of our predictor is lower than both baselines for all 6 traces (total 12 traces win).
+Our predictors is also better than tournament:11:12:12 for 4 out of 6 traces. Moreover,
+it outperformed GShare:15 for all traces. From these result, this means that our predictor
+can perform very promising prediction for both local and global branch correlation compared
+to other methods.
+
+\begin{scriptsize}
+\begin{table}[h!]
+  \centering
+  \caption{Misprediction rate for our method with each trace}
+  \label{table:our_performance}
+  \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Trace} & \textbf{Misprediction Rate}\\
+    \hline
+    \hline
+    fp1 & 0.811 \\
+    \hline
+    fp2 & 0.244 \\
+    \hline
+    int1 & 10.294 \\
+    \hline
+    int2 & 0.281 \\
+    \hline
+    mm1 & 1.880 \\
+    \hline
+    mm2 & 6.550 \\
+    \hline
+  \end{tabular}
+\end{table}
+\end{scriptsize}
+\section{Results}
+
+From previous section, our predictor outperformed both baselines predictor
+for all traces. It showed that it can solve indexing collision problem which we encountered
+in fp1 trace which is a problem in the tournament predictor. Moreover, the
+misprediction rate of our predictor showed that it can handle both local and global
+branch correlations. The summary of the result for the proposed method and baselines
+are shown in Table \ref{table:result}.
+
+\begin{scriptsize}
+\begin{table}[h!]
+  \centering
+  \caption{Final misprediction rate results for baselines and our method for each trace.}
+  \label{table:result}
+  \begin{tabular}{|l|l|l|l|l|l|l|}
+    \hline
+    \textbf{Predictor} & \textbf{fp1} & \textbf{fp2} & \textbf{int1} &\textbf{int2} & \textbf{mm1} & \textbf{mm2}\\
+    \hline
+    \hline
+    GShare:13 & 0.825 & 1.678 & 13.839 & 0.420 & 6.696 & 10.138 \\
+    \hline
+    Tournament & & & & & & \\
+    :9:10:10 & 0.991 & 3.246 & 12.622 & 0.426 & 2.581 & 8.483 \\
+    \hline
+    \hline
+    \textbf{Our predictor} & \textbf{0.811} & \textbf{0.244} & \textbf{10.294} & \textbf{0.281} & \textbf{1.880} & \textbf{6.550} \\
+    \hline
+  \end{tabular}
+\end{table}
+\end{scriptsize}
+
+\section{Conclusion}
+
+In this work, we proposed a branch predictor method which is based on Alpha 21264's tournament predictor.
+We update index hashing for the global predictor to use xor result between the program counter and the global
+history register as in GShare to solve index collision problem. We also changed the index of the predictor chooser
+to use the program counter. The predictor was config to use 14 global history bits,
+11 local history bits and 11 address index bits. The total storage used is 63502 bits which fit in our requirement.
+The proposed predictor was benchmarked with 6 different address traces, and it is compared to
+GShare with 13 global history bits and the tournament predictor with 9 global history bits, 10 local history bits
+and 10 address index bits. The result showed that our predictor outperformed the requirement baselines
+by great amount of margin for all address traces.
+
+
+papers\cite{nicepaper1,nicepaper2,nicepaper3}, you would say
 something like: "While the authors of~\cite{nicepaper1,nicepaper2,nicepaper3} did X,
 Y, and Z, this paper additionally does W, and is therefore much
 better."  Do NOT omit or anonymize references for blind review.  There
@@ -352,84 +416,12 @@ is one exception to this for your own prior work that appeared in IEEE
 CAL, arXiv, workshops without archived proceedings, etc.\ as
 discussed later in this document. 
 
-\noindent\textbf{Figures and Tables:} Ensure that the figures and
-tables are legible.  Please also ensure that you refer to your figures
-in the main text.  Many reviewers print the papers in
-gray-scale. Therefore, if you use colors for your figures, ensure that
-the different colors are highly distinguishable in gray-scale. 
-
 \noindent\textbf{References:}  There is no length limit for
 references. {\em Each reference must explicitly list all authors of
   the paper.  Papers not meeting this requirement will be rejected.}
 Since there is no length limit for the number of pages
 used for references, there is no need to save space here. 
 
-
-\section{Paper Submission Instructions}
-
-\subsection{Guidelines for Determining Authorship}
-IEEE guidelines dictate that authorship should be based on a {\em
-  substantial intellectual contribution}. It is assumed that all
-authors have had a significant role in the creation of an article that
-bears their names. In particular, the authorship credit must be
-reserved only for individuals who have met each of the following
-conditions: 
-
-\begin{enumerate}
-\item Made a significant intellectual contribution to the theoretical
-  development, system or experimental design, prototype development,
-  and/or the analysis and interpretation of data associated with the
-  work contained in the article; 
-
-\item Contributed to drafting the article or reviewing and/or revising
-  it for intellectual content; and 
-
-\item Approved the final version of the article as accepted for publication, including references.
-\end{enumerate}
-
-A detailed description of the IEEE authorship guidelines and
-responsibilities is available online.\footnote{\url{https://www.ieee.org/publications_standards/publications/rights/Section821.html}} Per
-these guidelines, it is not acceptable to award {\em honorary}
-authorship or {\em gift} authorship. Please keep these guidelines in
-mind while determining the author list of your paper. 
-
-\subsection{Declaring Authors}
-Declare all the authors of the paper upfront. Addition/removal of
-authors once the paper is accepted will have to be approved by the
-program chair, since it potentially undermines the goal of eliminating
-conflicts for reviewer assignment. 
-
-\subsection{Areas and Topics}
-Authors should indicate specific topics covered by the paper on the
-submission page. If you are unsure whether your paper falls within the
-scope of ISCA, please check with the program chair --- ISCA is a broad,
-multidisciplinary conference and encourages new topics. 
-
-\subsection{Declaring Conflicts of Interest}
-
-Authors must register all their conflicts on the paper submission
-site. Conflicts are needed to ensure appropriate assignment of
-reviewers. If a paper is found to have an undeclared conflict that
-causes a problem OR if a paper is found to declare false conflicts in
-order to abuse or `game' the review system, the paper may be rejected. 
-
-Please declare a conflict of interest with the following people for any author of your paper.
-A conflict occurs in the following cases:
-\begin{enumerate}
-\item Between advisor and advisee forever. 
-\item Between family members forever. 
-\item Between people who have collaborated in the last 5 years. This
-  collaboration can consist of a joint research or development
-  project, a joint paper, or when there is direct funding from the
-  potential reviewer (as opposed to company funding) to an author of
-  the paper. Co-participation in professional activities, such as
-  tutorials or studies, is not cause for conflict. When in doubt, the
-  author should check with the Program Chair. 
-\item Between people from same institution or who were in the same
-  institution in the last 5 years.  
-\item Between people whose relationship prevents the reviewer from
-  being objective in his/her assessment. 
-\end{enumerate}
 
 `Service' collaborations, such as co-authoring a report for a
 professional organization, serving on a program committee, or
@@ -484,8 +476,7 @@ other works or one's own work.
 
 
 \section*{Acknowledgements}
-This document is derived from previous conferences, in particular ISCA
-2019 and MICRO 2019.
+This work is done alone so I don't have any teammates.
 
 %%%%%%% -- PAPER CONTENT ENDS -- %%%%%%%%
 
