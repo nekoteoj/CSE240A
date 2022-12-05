@@ -46,30 +46,28 @@ University of California, San Diego}
 
 \begin{abstract}
 
-This document is intended to serve as a sample for submissions to the
-47th IEEE/ACM International Symposium on Computer Architecture (ISCA),
-May 30 -- June 3, 2020 in Valencia, Spain. This document provides
-guidelines that authors should follow when submitting papers to the
-conference.  This format is derived from the IEEE conference template IEEEtran.cls
-file with the objective of keeping the submission similar to the final
-version, i.e., the IEEEtran.cls template will also be used for
-  the camera-ready version.
+Branch instructions are part of modern computer programs in today world and are known to decrease
+the pipeline speed. To solve this problem, branch speculation was studied and various branch predictors
+were created to reduce the branch misprediction rate. In the early era, there are some predictors such as
+GShare, which can handle the global branch correlation, or the tournament predictor, which is composed
+of multi predictors and can handle both local and global branch correlation. In this work, we proposed
+a branch predictor based on the tournament predictor with some modification. Our result showed that
+it can beat both GShare and the tournament predictor for all testing traces in the term of misprediction rate.
 
 \end{abstract}
 
 \section{Introduction}
 
-This document provides instructions for submitting papers to ISCA
-2020.  In an effort to respect the efforts of reviewers and in the
-interest of fairness to all prospective authors, we request that all
-submissions to ISCA 2020 follow the formatting and submission rules
-detailed below. Submissions that violate these instructions may not be
-reviewed, at the discretion of the program chair, in order to
-maintain a review process that is fair to all potential authors. This
-document is itself formatted using the ISCA 2020 submission format. The
-content of this document mirrors that of the submission instructions
-that appear on the conference website. All questions regarding paper
-formatting and submission should be directed to the program chair.
+Real-world Computer programs consist of considerable amount of branch instructions. Without any branch speculation,
+the pipeline can be slowed down since it need to flush the pipeline in the case that fetched instructions were wrong.
+To boost the pipeline performance, modern computer archiectures increasingly rely on branch speculation in order
+to predict whether the branch will be taken or not. With more prediction accuracy, the pipeline can gain more performance.
+
+The branch predictor is designed as a component which receive branch instruction address as its inputs. After processing,
+the branch predictor will output a bit to determine whether the given branch will be taken or not. One of the most
+advantage of the branch predictor is to reduce number of pipeline flush which improve the processor performance. However,
+designing the branch predictor come with limitations. First, the implemented component need to store inside the chip so it
+doesn't have a high latency.
 
 \section{Background}
 
