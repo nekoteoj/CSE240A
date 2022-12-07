@@ -59,9 +59,9 @@ it can beat both GShare and the tournament predictor for all testing traces in t
 \section{Introduction}
 
 Real-world Computer programs consist of considerable amount of branch instructions. Without any branch speculation,
-the pipeline can be slowed down since it need to flush the pipeline in the case that fetched instructions were wrong.
+the pipeline can be slowed down since it need to flush the pipeline in the case that fetched instructions were wrong \cite{bp_survey1}.
 To boost the pipeline performance, modern computer archiectures increasingly rely on branch speculation in order
-to predict whether the branch will be taken or not. With more prediction accuracy, the pipeline can gain more performance.
+to predict whether the branch will be taken or not \cite{perceptron_predictor}. With more prediction accuracy, the pipeline can gain more performance.
 
 The branch predictor is designed as a component which receive branch instruction address as its inputs. After processing,
 the branch predictor will output a bit to determine whether the given branch will be taken or not. One of the most
@@ -306,10 +306,10 @@ bits for the local history table. Moreover, this means that $2^{11} \times 2$ bi
 storing the prediciton table. Thus, total used bits are 26624 bits. 
 
 For the global predictor, we used 14 global history bits. Thus, the size of the prediction
-table is $2^14 \times 2 = 32768$ bits which equals to the total storage for this predictor.
+table is $2^{14} \times 2 = 32768$ bits which equals to the total storage for this predictor.
 
 In addition to the predictor, we also have the chooser. We used the same index as the local predictor
-to select the chooser. Therefore, the size of the chooser is $2^11 \times 2 = 4096$ bits.
+to select the chooser. Therefore, the size of the chooser is $2^{11} \times 2 = 4096$ bits.
 
 From these information, the total size of the proposed predictor is
 $26624 + 14 + 32768 + 4096 = 63502$ bits which still fit to our budget.
@@ -317,7 +317,9 @@ $26624 + 14 + 32768 + 4096 = 63502$ bits which still fit to our budget.
 \section{Experimental Setup}
 
 In the project, we experiment the performance of our predictor compared to the given baselines.
-Although, baselines have 16K bits limitation. We extended the this limitation
+Although, baselines have 16K bits limitation. Thus, we have GShare with 13 bits and the tournament
+predictor with 9 global history bits, 10 lobal history bits and 10 program counter index bits.
+We also extended the this limitation
 by exploring the GShare with 15 bits and the tournament predictor with
 11 global history bits, 12 local history bits and 12 program counter index bits.
 This help show how our predictor preform if our baselines have the same storage budget.
@@ -364,8 +366,11 @@ as tournament:$x$:$y$:$z$. The performance of baselines is shown in Table \ref{t
 \end{scriptsize}
 
 Regarding the Table \ref{table:baseline_performance}, we can see that GShare baseline is better than
-the tournament baseline for fp trace group. In the other hand, the tournament
-baseline is better if we consider mm trace group. Both predictors performed
+the tournament baseline for fp trace group. This infers that fp traces involves a lot of branches that have
+global correlation. In the other hand, the tournament
+baseline is better if we consider mm trace group. One reason is that the tournament predictor can handle
+local branch correlations while GShare cannot. Thus, it has better performance on this trace group.
+Both predictors performed
 great on int trace group. Moreover, although these predictors are extended
 to larger storage budget, none of these perform better than both original baselines
 at every traces. The tournament:11:12:12 might look promising, as it can beat 11 out of 12
