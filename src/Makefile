@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc-12
 OPTS=-g -std=c11 -Werror
 
 all: main.o predictor.o

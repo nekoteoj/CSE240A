@@ -66,10 +66,54 @@ to predict whether the branch will be taken or not. With more prediction accurac
 The branch predictor is designed as a component which receive branch instruction address as its inputs. After processing,
 the branch predictor will output a bit to determine whether the given branch will be taken or not. One of the most
 advantage of the branch predictor is to reduce number of pipeline flush which improve the processor performance. However,
-designing the branch predictor come with limitations. First, the implemented component need to store inside the chip so it
-doesn't have a high latency.
+designing the branch predictor come with limitations. The implemented component need to be inside the processor chip.
+Thus, the storage for storing branch predictor information is limited. The speed of the branch predictor need to be fast
+so that it doesn't slow down pipeline stages.
+
+Branch prediction has been studied and developed for decades. An earlier version of branch prediction
+might just used the saturating counter for each branch address to determine the branch outcome.
+Many improvements had been done during the past time. One of the improvement was GShare predictor which can handle
+the global correlation between branches. Later, there is another idea to combine the local branch predictor and the global
+branch predictor together with another component to choose the appropriate predictor for different
+addresses. The very first implementation of this idea is in Alpha 21264 processor \cite{Alpha21264} which shown a very good performance
+in our benchmark.
+
+In this project, we proposed another branch predictor based on the tournament predictor. We looked at how the tournament predictor
+behaved and its problems. We ended up by modify some components of the predictor to increase more prediction
+accuracy on our testing traces. The objective of our predictor is to perform better than provided GShare and
+the tournament predictor baselines.
 
 \section{Background}
+
+In this section, we described two different branch predictors which we used as our baselines;
+1) GShare and 2) Tournament predictor.
+
+\begin{enumerate}
+  \item GShare
+
+  The branch outcomes are not only depend on the local history of the considering
+  branches. Sometimes, it also depends on outcome from other branches. This correlation
+  is called global correlation. This is done by having a global history register (GHR) which
+  tracks all outcomes from all branches. To make a prediction, GShare uses xoring result
+  between GHR and address in the program counter as an index to the 2-bit states prediction table. 
+  The advantage of this predictor is to handle the global correlation between branch histories and
+  current branch address which can't be done in the earlier predictor. However, there is also some
+  cons. For example, it can lose the local branch correlation and the misprediction rate
+  could be higher.
+
+  \item Tournament predictor
+
+  The tournament predictor is used in the Alpha 21264 processor \cite{Alpha21264}. Instead of using only one predictor,
+  this predictor is a combination of multiple predictors. In Alpha 21264, there are two predictors for
+  global and local prediction. The global predictor use information from GHR to select the prediction state
+  in the prediction state table. The local predictor is a 2-level predictor which has the local branch history
+  in the first level and the prediction state table in the second level. In order the choose the appropriate
+  predictor for an input branch address, This predictor use another component to learn and choose the predictor
+  for each prediction. The advantage of this predictor is that it can handle both global and local branch correlation.
+  Anyway, this come with a trade-off. Using two predictors requires large storage, so we need to reduce the size of
+  both local and global predictor to fit in the budget storage.
+
+\end{enumerate}
 
 \section{Design Ideas}
 
@@ -162,29 +206,27 @@ result. The internal process of this predictor is also shown in Figure \ref{fig:
 
 During the update phase, the history related to the instruction address is updated with the new outcome.
 The prediction table state also get updated regarding the new branch outcome. We update the state toward
-strongly not-taken and toward strongly taken when the outcome is not-taken and taken respectively. The
-update algorithm is shown in Algorithm \ref{alg:local_predictor_update}.
+strongly not-taken and toward strongly taken when the outcome is not-taken and taken respectively.
 
-\begin{algorithm}
-\caption{An algorithm with caption}\label{alg:local_predictor_update}
-\begin{algorithmic}
-\Require $n \geq 0$
-\Ensure $y = x^n$
-\State $y \gets 1$
-\State $X \gets x$
-\State $N \gets n$
-\While{$N \neq 0$}
-\If{$N$ is even}
-    \State $X \gets X \times X$
-    \State $N \gets \frac{N}{2}$  \Comment{This is a comment}
-\ElsIf{$N$ is odd}
-    \State $y \gets y \times X$
-    \State $N \gets N - 1$
-\EndIf
-\EndWhile
-\end{algorithmic}
-\end{algorithm}
-
+% \begin{algorithm}
+% \caption{An algorithm with caption}\label{alg:local_predictor_update}
+% \begin{algorithmic}
+% \Require $n \geq 0$
+% \Ensure $y = x^n$
+% \State $y \gets 1$
+% \State $X \gets x$
+% \State $N \gets n$
+% \While{$N \neq 0$}
+% \If{$N$ is even}
+%     \State $X \gets X \times X$
+%     \State $N \gets \frac{N}{2}$  \Comment{This is a comment}
+% \ElsIf{$N$ is odd}
+%     \State $y \gets y \times X$
+%     \State $N \gets N - 1$
+% \EndIf
+% \EndWhile
+% \end{algorithmic}
+% \end{algorithm}
 
 
 \subsection{Global branch predictor}
@@ -207,7 +249,9 @@ in the previous section. The internal implementation of this component is shown 
     \label{fig:global_predictor}
 \end{figure}
 
-In order to update the global predictor,
+To update the global predictor, we update the corresponding state toward the strongly taken if the outcome is taken,
+or update it toward the strongly not-taken in the opposite case. After the state was updated,
+we update the global history by left shifting it and add new outcome to the last bit.
 
 \subsection{Predictor chooser}
 
@@ -405,76 +449,9 @@ GShare with 13 global history bits and the tournament predictor with 9 global hi
 and 10 address index bits. The result showed that our predictor outperformed the requirement baselines
 by great amount of margin for all address traces.
 
-
-papers\cite{nicepaper1,nicepaper2,nicepaper3}, you would say
-something like: "While the authors of~\cite{nicepaper1,nicepaper2,nicepaper3} did X,
-Y, and Z, this paper additionally does W, and is therefore much
-better."  Do NOT omit or anonymize references for blind review.  There
-is one exception to this for your own prior work that appeared in IEEE
-CAL, arXiv, workshops without archived proceedings, etc.\ as
-discussed later in this document. 
-
-\noindent\textbf{References:}  There is no length limit for
-references. {\em Each reference must explicitly list all authors of
-  the paper.  Papers not meeting this requirement will be rejected.}
-Since there is no length limit for the number of pages
-used for references, there is no need to save space here. 
-
-
-`Service' collaborations, such as co-authoring a report for a
-professional organization, serving on a program committee, or
-co-presenting tutorials, do not themselves create a conflict of
-interest. Co-authoring a paper that is a compendium of various
-projects with no true collaboration among the projects does not
-constitute a conflict among the authors of the different projects. On
-the other hand, there may be others not covered by the above with whom
-you believe a COI exists, for example, an ongoing collaboration which
-has not yet resulted in the creation of a paper or proposal. Please
-report such COIs; however, you may be asked to justify them. Please be
-reasonable. For example, you cannot declare a COI with a reviewer just
-because that reviewer works on topics similar to or related to those
-in your paper.  The program chair may contact co-authors to explain a COI
-whose origin is unclear. 
-
-Most reviews will be solicited among the members of the PC and the ERC, but other
-members from the community may also write reviews. Please declare all
-your conflicts (not just restricted to the PC and ERC) on the
-submission form. When in doubt, contact the program chair. 
-
-
-\subsection{Concurrent Submissions and Workshops}
-By submitting a manuscript to ISCA 2020, the authors guarantee that
-the manuscript has not been previously published or accepted for
-publication in a substantially similar form in any conference,
-journal, or the archived proceedings of a workshop (e.g., in the
-ACM/IEEE digital libraries) --- see exceptions below. The authors also
-guarantee that no paper that contains significant overlap with the
-contributions of the submitted paper will be under review for any
-other conference or journal or an archived proceedings of a workshop
-during the ISCA 2020 review period. Violation of any of these
-conditions will lead to rejection. 
-
-The only exceptions to the above rules are for the authors' own papers
-in (1) workshops without archived proceedings such as in the ACM/IEEE
-digital libraries (or where the authors chose not to have their paper
-appear in the archived proceedings), or (2) venues such as IEEE CAL or
-arXiv where there is an explicit policy that such publication does not
-preclude longer conference submissions.  In all such cases, the
-submitted manuscript may ignore the above work to preserve author
-anonymity. This information must, however, be provided on the
-submission form --- the program chair will make this information available
-to reviewers if it becomes necessary to ensure a fair review.  As
-always, if you are in doubt, it is best to contact program chairs. 
-
-
-Finally, the ACM/IEEE Plagiarism Policies\footnote{\url{http://www.acm.org/publications/policies/plagiarism_policy}\\
-\url{https://www.ieee.org/publications_standards/publications/rights/plagiarism_FAQ.html}}
-cover a range of ethical issues concerning the misrepresentation of
-other works or one's own work. 
-
-
 \section*{Acknowledgements}
-This work is done alone so I don't have any teammates.
+This work is done alone so I don't have any teammates. Thanks the professor and TAs for good materials in this
+courses. Most of the knowledge that I used to finished this project is from course slides.
 
 %%%%%%% -- PAPER CONTENT ENDS -- %%%%%%%%
 
